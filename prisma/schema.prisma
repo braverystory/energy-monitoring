@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      String   // admin, operator, viewer
+  department String?
+  createdAt DateTime @default(now())
+  lastLogin DateTime?
+  alerts    Alert[]  @relation("AcknowledgedBy")
+}
+
+model Zone {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  floor       String
+  area        String
+  capacity    Float    // in kW
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  devices     Device[]
+  readings    EnergyReading[]
+  alerts      Alert[]
+}
+
+model Device {
+  id          String   @id @default(uuid())
+  name        String
+  type        String   // Medical, Climate Control, Lighting, Storage, IT, Other
+  consumption Float    // in kW
+  status      String   // online, offline, maintenance
+  zoneId      String
+  zone        Zone     @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EnergyReading {
+  id          String   @id @default(uuid())
+  timestamp   DateTime @default(now())
+  consumption Float    // in kW
+  voltage     Float?   // in V
+  current     Float?   // in A
+  powerFactor Float?   // 0-1
+  cost        Float?   // in USD
+  zoneId      String?
+  zone        Zone?    @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+}
+
+model Alert {
+  id              String   @id @default(uuid())
+  type            String   // critical, warning, info
+  title           String
+  message         String
+  timestamp       DateTime @default(now())
+  acknowledged    Boolean  @default(false)
+  acknowledgedBy  String?
+  acknowledgedAt  DateTime?
+  zoneId          String?
+  zone            Zone?    @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  user            User?    @relation("AcknowledgedBy", fields: [acknowledgedBy], references: [id])
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  title       String
+  type        String   // daily, weekly, monthly, custom
+  startDate   DateTime
+  endDate     DateTime
+  generatedAt DateTime @default(now())
+  generatedBy String
+  status      String   // completed, generating, failed
+  data        String?  // JSON data
+}
+
+model Settings {
+  id                  String   @id @default(uuid())
+  costPerKwh          Float    @default(0.139)
+  currency            String   @default("USD")
+  refreshInterval     Int      @default(5)
+  dataRetention       Int      @default(90)
+  warningThreshold    Int      @default(80)
+  criticalThreshold   Int      @default(90)
+  emailNotifications  Boolean  @default(true)
+  smsNotifications    Boolean  @default(false)
+  emailRecipients     String?
+  updatedAt           DateTime @updatedAt
+}

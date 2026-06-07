@@ -1,49 +1,65 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+import { formatDistanceToNow } from 'date-fns'
+
 interface Alert {
   id: string
   type: 'critical' | 'warning' | 'info'
   title: string
   message: string
-  timestamp: string
+  timestamp: Date
   zone?: string
 }
 
-const alerts: Alert[] = [
-  {
-    id: '1',
-    type: 'critical',
-    title: 'High Energy Consumption',
-    message: 'Radiology department exceeding normal consumption by 15%',
-    timestamp: '2 minutes ago',
-    zone: 'Radiology',
-  },
-  {
-    id: '2',
-    type: 'warning',
-    title: 'Peak Load Approaching',
-    message: 'Operating Rooms approaching peak capacity threshold',
-    timestamp: '15 minutes ago',
-    zone: 'Operating Rooms',
-  },
-  {
-    id: '3',
-    type: 'info',
-    title: 'Maintenance Scheduled',
-    message: 'Scheduled maintenance for backup generators at 2:00 AM',
-    timestamp: '1 hour ago',
-  },
-  {
-    id: '4',
-    type: 'warning',
-    title: 'Unusual Pattern Detected',
-    message: 'Emergency Department showing irregular consumption pattern',
-    timestamp: '2 hours ago',
-    zone: 'Emergency Department',
-  },
-]
-
 export default function AlertsPanel() {
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const response = await fetch('/api/alerts?acknowledged=false')
+        const result = await response.json()
+        
+        if (result.success && result.data) {
+          // Convert timestamp strings to Date objects and limit to 4 most recent
+          const formattedAlerts = result.data
+            .map((alert: any) => ({
+              ...alert,
+              timestamp: new Date(alert.timestamp),
+            }))
+            .slice(0, 4)
+          setAlerts(formattedAlerts)
+        }
+      } catch (error) {
+        console.error('Error fetching alerts:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAlerts()
+    const interval = setInterval(fetchAlerts, 30000) // Refresh every 30 seconds
+    return () => clearInterval(interval)
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="h-6 bg-gray-200 rounded w-1/4 mb-6 animate-pulse"></div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="border border-gray-200 rounded-lg p-4 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   const getAlertIcon = (type: Alert['type']) => {
     switch (type) {
       case 'critical':
@@ -113,7 +129,7 @@ export default function AlertsPanel() {
                 <p className="text-sm text-gray-700 mb-2">{alert.message}</p>
                 
                 <div className="flex items-center gap-4 text-xs text-gray-500">
-                  <span>🕐 {alert.timestamp}</span>
+                  <span>🕐 {formatDistanceToNow(alert.timestamp, { addSuffix: true })}</span>
                   {alert.zone && <span>📍 {alert.zone}</span>}
                 </div>
               </div>

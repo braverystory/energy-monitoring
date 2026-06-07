@@ -1,43 +1,62 @@
 import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import type { ApiResponse, EnergyReading } from '@/lib/types'
-
-// Mock real-time data generator
-function generateRealtimeData(count: number = 12): EnergyReading[] {
-  const data: EnergyReading[] = []
-  const now = new Date()
-  
-  for (let i = count - 1; i >= 0; i--) {
-    const timestamp = new Date(now.getTime() - i * 5 * 60000) // 5-minute intervals
-    data.push({
-      id: `reading-${timestamp.getTime()}`,
-      timestamp,
-      consumption: 280 + Math.random() * 80,
-    })
-  }
-  
-  return data
-}
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const count = parseInt(searchParams.get('count') || '12')
-    const zone = searchParams.get('zone')
+    const zoneFilter = searchParams.get('zone')
     
-    const readings = generateRealtimeData(count)
+    const now = new Date()
+    const timeAgo = new Date(now.getTime() - count * 5 * 60000) // 5-minute intervals
     
-    // Filter by zone if specified
-    const filteredReadings = zone 
-      ? readings.filter(r => r.zone === zone)
-      : readings
+    // Build query
+    const where: any = {
+      timestamp: {
+        gte: timeAgo,
+      },
+    }
+    
+    if (zoneFilter) {
+      const zone = await prisma.zone.findFirst({
+        where: { name: zoneFilter },
+      })
+      if (zone) {
+        where.zoneId = zone.id
+      }
+    }
+    
+    const readings = await prisma.energyReading.findMany({
+      where,
+      orderBy: {
+        timestamp: 'asc',
+      },
+      take: count,
+      include: {
+        zone: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    })
+    
+    const formattedReadings: EnergyReading[] = readings.map(r => ({
+      id: r.id,
+      timestamp: r.timestamp,
+      consumption: r.consumption,
+      zone: r.zone?.name,
+    }))
     
     const response: ApiResponse<EnergyReading[]> = {
       success: true,
-      data: filteredReadings,
+      data: formattedReadings,
     }
 
     return NextResponse.json(response)
   } catch (error) {
+    console.error('Error fetching real-time readings:', error)
     const errorResponse: ApiResponse<EnergyReading[]> = {
       success: false,
       error: 'Failed to fetch real-time readings',
