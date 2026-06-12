@@ -10,6 +10,7 @@ const navigation = [
   { name: 'Zones', href: '/zones', icon: '🏥' },
   { name: 'Alerts', href: '/alerts', icon: '🔔' },
   { name: 'Reports', href: '/reports', icon: '📄' },
+  { name: 'MQTT Connection', href: '/mqtt', icon: '🔌' },
   { name: 'Settings', href: '/settings', icon: '⚙️' },
 ]
 
