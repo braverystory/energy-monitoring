@@ -331,3 +331,29 @@ For support and questions:
 ---
 
 Built with ⚡ for efficient hospital energy management
+
+
+## Server Preparatiom
+```
+sudo apt update
+sudo apt install git make gcc g++
+sudo apt install mosquitto mosquitto-dev mosquitto-clients
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.5/install.sh | bash
+\. "$HOME/.nvm/nvm.sh"
+nvm install 24
+
+sudo nano /etc/mosquitto/mosquitto.conf
+ADD >>
+   # Network
+   listener 1883
+   allow_anonymous true
+
+   # Logging
+   log_dest file /var/log/mosquitto/mosquitto.log
+   log_type all
+
+sudo systemctl stop mosquitto
+sudo systemctl enable mosquitto
+sudo systemctl start mosquitto
+sudo systemctl status mosquitto
+```
