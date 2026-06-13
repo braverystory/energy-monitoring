@@ -132,8 +132,7 @@ async function main() {
     }))
 
     await prisma.device.createMany({
-      data: zoneDevices,
-      skipDuplicates: true,
+      data: zoneDevices
     })
   }
   console.log('✓ Created devices')
